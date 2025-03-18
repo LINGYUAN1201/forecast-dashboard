@@ -1,4 +1,7 @@
 dash==2.0.0
+pandas
+numpy
 plotly
 cryptography
 gunicorn
+python-dotenv
