@@ -3,16 +3,20 @@ import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
 from dash import Dash, dcc, html, Input, Output, dash_table
-from encryption_utils import FileEncryptor  # 请确保该文件存在，并包含加密/解密实现
+from encryption_utils import FileEncryptor
+import os
 
 # 文件路径设置
-original_file = 'data/forecast_results.pkl'                # 原始预测结果（明文）
+# 注意：原始文件已移除，仅保留加密后的文件供解密使用
 encrypted_file = 'data/encrypted_forecast_results.pkl'        # 加密后的文件
 decrypted_file = 'data/decrypted_forecast_results.pkl'        # 解密后临时文件
 
-# 解密数据函数：使用指定密码解密加密文件，保存为临时明文文件
+# 解密数据函数：使用环境变量中的密码解密加密文件，保存为临时明文文件
 def decrypt_data():
-    encryptor = FileEncryptor("your_password_here")  # 修改为您的加密密码
+    password = os.environ.get("ENCRYPTION_PASSWORD")
+    if not password:
+        raise ValueError("请先设置环境变量 ENCRYPTION_PASSWORD")
+    encryptor = FileEncryptor(password)
     encryptor.decrypt_file(encrypted_file, decrypted_file)
 
 # 尝试加载预测结果数据
@@ -32,7 +36,6 @@ models = sorted(list({key[2] for key in forecast_results.keys()}))
 # 创建 Dash 应用
 app = Dash(__name__, external_stylesheets=['https://codepen.io/chriddyp/pen/bWLwgP.css'])
 server = app.server  # 供 Gunicorn 使用
-
 
 # 定义颜色方案
 COLORS = {
@@ -298,7 +301,5 @@ def update_dashboard(selected_city, selected_variable, selected_models):
     return fig, table_data
 
 if __name__ == '__main__':
-    import os
     port = int(os.environ.get("PORT", 8050))
     app.run_server(debug=True, host="0.0.0.0", port=port)
-
