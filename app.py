@@ -7,12 +7,14 @@ from encryption_utils import FileEncryptor
 import os
 
 # 文件路径设置
-# 注意：原始文件已移除，仅保留加密后的文件供解密使用
-encrypted_file = 'data/encrypted_forecast_results.pkl'        # 加密后的文件
-decrypted_file = 'data/decrypted_forecast_results.pkl'        # 解密后临时文件
+# 生产环境中只使用加密后的文件，原始文件不参与加载
+encrypted_file = 'data/encrypted_forecast_results.pkl'        # 加密后的数据文件
+decrypted_file = 'data/decrypted_forecast_results.pkl'          # 解密后临时文件
 
-# 解密数据函数：使用环境变量中的密码解密加密文件，保存为临时明文文件
 def decrypt_data():
+    """
+    从环境变量中获取密码，并解密加密文件，生成临时明文文件供加载使用
+    """
     password = os.environ.get("ENCRYPTION_PASSWORD")
     if not password:
         raise ValueError("请先设置环境变量 ENCRYPTION_PASSWORD")
@@ -21,21 +23,21 @@ def decrypt_data():
 
 # 尝试加载预测结果数据
 try:
-    decrypt_data()  # 先解密文件
+    decrypt_data()  # 先解密
     with open(decrypted_file, 'rb') as f:
         forecast_results = pickle.load(f)
 except (FileNotFoundError, pickle.UnpicklingError) as e:
     forecast_results = {}
     print("预测结果文件未找到或解密失败，请确认加密密码正确，或先运行预测脚本。错误信息：", e)
 
-# 从 forecast_results 的 key 中获取城市、变量和模型列表
+# 从 forecast_results 的 key 中提取城市、变量和模型列表
 cities = sorted(list({key[0] for key in forecast_results.keys()}))
 forecast_vars = sorted(list({key[1] for key in forecast_results.keys()}))
 models = sorted(list({key[2] for key in forecast_results.keys()}))
 
 # 创建 Dash 应用
 app = Dash(__name__, external_stylesheets=['https://codepen.io/chriddyp/pen/bWLwgP.css'])
-server = app.server  # 供 Gunicorn 使用
+server = app.server  # Gunicorn 使用的 WSGI 对象
 
 # 定义颜色方案
 COLORS = {
@@ -48,14 +50,11 @@ COLORS = {
 
 # 定义应用布局
 app.layout = html.Div(style={'backgroundColor': COLORS['background'], 'fontFamily': 'Arial, sans-serif'}, children=[
-    # 标题部分
     html.Div([
         html.H1("Forecast Dashboard", style={'textAlign': 'center', 'color': COLORS['text'], 'padding': '20px'}),
         html.P("Analyze and compare forecasts across cities, variables, and models.", 
                style={'textAlign': 'center', 'color': '#7f8c8d', 'fontSize': '16px'})
     ]),
-
-    # 控制面板
     html.Div([
         html.Div([
             html.Label("Select City:", style={'color': COLORS['text']}),
@@ -67,7 +66,6 @@ app.layout = html.Div(style={'backgroundColor': COLORS['background'], 'fontFamil
                 placeholder="Choose a city..."
             )
         ], style={'width': '30%', 'margin': 'auto', 'padding': '10px'}),
-
         html.Div([
             html.Label("Select Forecast Variable:", style={'color': COLORS['text']}),
             dcc.Dropdown(
@@ -78,7 +76,6 @@ app.layout = html.Div(style={'backgroundColor': COLORS['background'], 'fontFamil
                 placeholder="Choose a variable..."
             )
         ], style={'width': '30%', 'margin': 'auto', 'padding': '10px'}),
-
         html.Div([
             html.Label("Select Models (multi-select):", style={'color': COLORS['text']}),
             dcc.Dropdown(
@@ -91,17 +88,14 @@ app.layout = html.Div(style={'backgroundColor': COLORS['background'], 'fontFamil
             )
         ], style={'width': '30%', 'margin': 'auto', 'padding': '10px'}),
     ], style={'display': 'flex', 'justifyContent': 'space-between', 'margin': '0 auto', 'maxWidth': '90%'}),
-
-    # 图表区域
     html.Div([
         dcc.Loading(
             id="loading-graph",
             type="circle",
-            children=dcc.Graph(id='forecast-graph', style={'height': '500px', 'margin': 'auto'}),
+            children=dcc.Graph(id='forecast-graph', style={'height': '500px', 'margin': 'auto'})
         )
-    ], style={'padding': '20px', 'backgroundColor': '#ffffff', 'borderRadius': '8px', 'boxShadow': '0 2px 8px rgba(0,0,0,0.1)'}),
-
-    # 错误指标表格
+    ], style={'padding': '20px', 'backgroundColor': '#ffffff', 'borderRadius': '8px', 
+              'boxShadow': '0 2px 8px rgba(0,0,0,0.1)'}),
     html.Div([
         html.H2("Error Metrics by Model", style={'textAlign': 'center', 'color': COLORS['text'], 'paddingTop': '20px'}),
         dash_table.DataTable(
@@ -117,10 +111,10 @@ app.layout = html.Div(style={'backgroundColor': COLORS['background'], 'fontFamil
             style_header={'fontWeight': 'bold', 'backgroundColor': COLORS['primary'], 'color': 'white'},
             style_data_conditional=[{'if': {'row_index': 'odd'}, 'backgroundColor': '#f9f9f9'}]
         )
-    ], style={'padding': '20px', 'backgroundColor': '#ffffff', 'borderRadius': '8px', 'boxShadow': '0 2px 8px rgba(0,0,0,0.1)'})
+    ], style={'padding': '20px', 'backgroundColor': '#ffffff', 'borderRadius': '8px', 
+              'boxShadow': '0 2px 8px rgba(0,0,0,0.1)'})
 ])
 
-# 回调函数：更新图表和误差指标表格
 @app.callback(
     [Output('forecast-graph', 'figure'),
      Output('error-metrics-table', 'data')],
@@ -144,7 +138,6 @@ def update_dashboard(selected_city, selected_variable, selected_models):
     
     global_y_min, global_y_max = float('inf'), float('-inf')
     
-    # 遍历所有模型的数据，计算全局 Y 轴范围
     for idx, model in enumerate(selected_models):
         key = (selected_city, selected_variable, model)
         if key not in forecast_results:
@@ -172,7 +165,6 @@ def update_dashboard(selected_city, selected_variable, selected_models):
         future_df = data['forecast_future_df']
         error_metrics = data['error_metrics']
         
-        # 绘制实际值曲线（仅绘制一次）
         if not actual_plotted:
             train_df = hist_df[hist_df['split'] == 'Train']
             test_df = hist_df[hist_df['split'] == 'Test']
@@ -196,7 +188,6 @@ def update_dashboard(selected_city, selected_variable, selected_models):
             test_start_date = test_df['date'].iloc[0]
             actual_plotted = True
         
-        # 绘制测试集预测曲线
         if 'test_forecast' in hist_df.columns:
             fig.add_trace(go.Scatter(
                 x=hist_df['date'],
@@ -208,7 +199,6 @@ def update_dashboard(selected_city, selected_variable, selected_models):
                 legendgroup=f"Model {idx + 1}"
             ))
         
-        # 绘制未来预测曲线
         if not future_df.empty and 'final_forecast' in future_df.columns:
             fig.add_trace(go.Scatter(
                 x=future_df['date'],
@@ -221,7 +211,6 @@ def update_dashboard(selected_city, selected_variable, selected_models):
             ))
             test_end_date = hist_df['date'].iloc[-1]
         
-        # 构造误差指标表格数据
         mae = round(error_metrics.get('MAE', 0), 2) if error_metrics.get('MAE') is not None else "N/A"
         mse = round(error_metrics.get('MSE', 0), 2) if error_metrics.get('MSE') is not None else "N/A"
         rmse = round(error_metrics.get('RMSE', 0), 2) if error_metrics.get('RMSE') is not None else "N/A"
@@ -232,7 +221,6 @@ def update_dashboard(selected_city, selected_variable, selected_models):
             "RMSE": rmse
         })
     
-    # 添加训练集与测试集分割线
     if train_end_date and test_start_date:
         fig.add_trace(go.Scatter(
             x=[train_end_date, train_end_date],
@@ -243,7 +231,6 @@ def update_dashboard(selected_city, selected_variable, selected_models):
             showlegend=False
         ))
     
-    # 添加测试集与未来预测分割线
     if test_end_date:
         fig.add_trace(go.Scatter(
             x=[test_end_date, test_end_date],
