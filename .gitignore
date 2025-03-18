@@ -1,7 +1,3 @@
-# 忽略原始数据文件和解密后的文件
-data/forecast_results.pkl
-data/decrypted_forecast_results.pkl
-
 
 # 忽略 Python 临时文件
 *.pyc
