@@ -31,6 +31,8 @@ models = sorted(list({key[2] for key in forecast_results.keys()}))
 
 # 创建 Dash 应用
 app = Dash(__name__, external_stylesheets=['https://codepen.io/chriddyp/pen/bWLwgP.css'])
+server = app.server  # 供 Gunicorn 使用
+
 
 # 定义颜色方案
 COLORS = {
@@ -297,3 +299,4 @@ def update_dashboard(selected_city, selected_variable, selected_models):
 
 if __name__ == '__main__':
     app.run_server(debug=True, port=8050)
+
