@@ -1,0 +1,9 @@
+# 忽略原始数据文件（明文数据）
+data/forecast_results.pkl
+
+# 忽略 Python 临时文件
+*.pyc
+__pycache__/
+
+# 忽略虚拟环境文件夹（如果存在）
+venv/
