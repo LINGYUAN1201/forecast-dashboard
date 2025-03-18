@@ -5,4 +5,5 @@ plotly
 cryptography
 gunicorn
 python-dotenv
-werkzeug==2.2.3
+werkzeug<2.2
+
