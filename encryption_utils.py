@@ -4,6 +4,10 @@ from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
 
+from dotenv import load_dotenv
+load_dotenv()
+
+
 class FileEncryptor:
     def __init__(self, password, salt=b'saltysalt'):
         """
@@ -80,7 +84,11 @@ class FileEncryptor:
 
 # 以下为测试代码，可直接运行本文件进行加密/解密测试
 if __name__ == "__main__":
-    password = "your_password_here"  # 请将此处修改为您的实际密码
+    # 从环境变量中读取加密密码（确保在运行前设置了 ENCRYPTION_PASSWORD 环境变量）
+    password = os.environ.get("ENCRYPTION_PASSWORD")
+    if not password:
+        raise ValueError("请先设置环境变量 ENCRYPTION_PASSWORD")
+    
     encryptor = FileEncryptor(password)
     
     input_file = "data/forecast_results.pkl"
