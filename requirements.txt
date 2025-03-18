@@ -5,3 +5,4 @@ plotly
 cryptography
 gunicorn
 python-dotenv
+werkzeug<3
