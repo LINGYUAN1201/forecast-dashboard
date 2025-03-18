@@ -298,5 +298,7 @@ def update_dashboard(selected_city, selected_variable, selected_models):
     return fig, table_data
 
 if __name__ == '__main__':
-    app.run_server(debug=True, port=8050)
+    import os
+    port = int(os.environ.get("PORT", 8050))
+    app.run_server(debug=True, host="0.0.0.0", port=port)
 
