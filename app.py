@@ -21,6 +21,9 @@ models = sorted(list({key[2] for key in forecast_results.keys()}))
 # 创建 Dash 应用
 app = Dash(__name__, external_stylesheets=['https://codepen.io/chriddyp/pen/bWLwgP.css'])
 
+# 显式暴露 WSGI 入口点
+server = app.server
+
 # 定义专业化的颜色方案
 COLORS = {
     "background": "#f9f9f9",
@@ -35,10 +38,9 @@ app.layout = html.Div(style={'backgroundColor': COLORS['background'], 'fontFamil
     # 标题部分
     html.Div([
         html.H1("Forecast Dashboard", style={'textAlign': 'center', 'color': COLORS['text'], 'padding': '20px'}),
-        html.P("Analyze and compare forecasts across cities, variables, and models.", 
+        html.P("Analyze and compare forecasts across cities, variables, and models.",
                style={'textAlign': 'center', 'color': '#7f8c8d', 'fontSize': '16px'})
     ]),
-
     # 控制面板
     html.Div([
         html.Div([
@@ -51,7 +53,6 @@ app.layout = html.Div(style={'backgroundColor': COLORS['background'], 'fontFamil
                 placeholder="Choose a city..."
             )
         ], style={'width': '30%', 'margin': 'auto', 'padding': '10px'}),
-
         html.Div([
             html.Label("Select Forecast Variable:", style={'color': COLORS['text']}),
             dcc.Dropdown(
@@ -62,7 +63,6 @@ app.layout = html.Div(style={'backgroundColor': COLORS['background'], 'fontFamil
                 placeholder="Choose a variable..."
             )
         ], style={'width': '30%', 'margin': 'auto', 'padding': '10px'}),
-
         html.Div([
             html.Label("Select Models (multi-select):", style={'color': COLORS['text']}),
             dcc.Dropdown(
@@ -75,7 +75,6 @@ app.layout = html.Div(style={'backgroundColor': COLORS['background'], 'fontFamil
             )
         ], style={'width': '30%', 'margin': 'auto', 'padding': '10px'}),
     ], style={'display': 'flex', 'justifyContent': 'space-between', 'margin': '0 auto', 'maxWidth': '90%'}),
-
     # 图表区域
     html.Div([
         dcc.Loading(
@@ -84,7 +83,6 @@ app.layout = html.Div(style={'backgroundColor': COLORS['background'], 'fontFamil
             children=dcc.Graph(id='forecast-graph', style={'height': '500px', 'margin': 'auto'}),
         )
     ], style={'padding': '20px', 'backgroundColor': '#ffffff', 'borderRadius': '8px', 'boxShadow': '0 2px 8px rgba(0,0,0,0.1)'}),
-
     # 错误指标表格
     html.Div([
         html.H2("Error Metrics by Model", style={'textAlign': 'center', 'color': COLORS['text'], 'paddingTop': '20px'}),
@@ -116,12 +114,9 @@ app.layout = html.Div(style={'backgroundColor': COLORS['background'], 'fontFamil
 def update_dashboard(selected_city, selected_variable, selected_models):
     if not selected_models:
         return go.Figure(), []
-
     table_data = []
     fig = go.Figure()
-
     actual_plotted = False
-
     # 使用 Plotly 自带的颜色调色板
     colors = [
         '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd',
@@ -129,10 +124,8 @@ def update_dashboard(selected_city, selected_variable, selected_models):
         '#aec7e8', '#ffbb78', '#98df8a', '#ff9896', '#c5b0d5',
         '#c49c94', '#f7b6d2', '#c7c7c7', '#dbdb8d', '#9edae5'
     ]
-
     # 初始化全局 Y 轴范围
     global_y_min, global_y_max = float('inf'), float('-inf')
-
     # 遍历所有模型的数据，计算全局 Y 轴范围
     for idx, model in enumerate(selected_models):
         key = (selected_city, selected_variable, model)
@@ -141,15 +134,12 @@ def update_dashboard(selected_city, selected_variable, selected_models):
         data = forecast_results[key]
         hist_df = data['historical_df']
         future_df = data['forecast_future_df']
-
         # 更新全局 Y 轴范围
         global_y_min = min(global_y_min, hist_df['actual'].min(), hist_df['test_forecast'].min() if 'test_forecast' in hist_df.columns else float('inf'))
         global_y_max = max(global_y_max, hist_df['actual'].max(), hist_df['test_forecast'].max() if 'test_forecast' in hist_df.columns else float('-inf'))
-
         if not future_df.empty and 'final_forecast' in future_df.columns:
             global_y_min = min(global_y_min, future_df['final_forecast'].min())
             global_y_max = max(global_y_max, future_df['final_forecast'].max())
-
     # 绘制实际值和预测曲线
     train_end_date, test_start_date, test_end_date = None, None, None
     for idx, model in enumerate(selected_models):
@@ -160,7 +150,6 @@ def update_dashboard(selected_city, selected_variable, selected_models):
         hist_df = data['historical_df']
         future_df = data['forecast_future_df']
         error_metrics = data['error_metrics']
-
         # 绘制实际值
         if not actual_plotted:
             train_df = hist_df[hist_df['split'] == 'Train']
@@ -181,13 +170,10 @@ def update_dashboard(selected_city, selected_variable, selected_models):
                 line=dict(color='red', width=2),
                 legendgroup='Actual Data'
             ))
-
             # 记录分隔点日期
             train_end_date = train_df['date'].iloc[-1]
             test_start_date = test_df['date'].iloc[0]
-
             actual_plotted = True
-
         # 绘制测试集预测
         if 'test_forecast' in hist_df.columns:
             fig.add_trace(go.Scatter(
@@ -199,7 +185,6 @@ def update_dashboard(selected_city, selected_variable, selected_models):
                 opacity=0.8,
                 legendgroup=f"Model {idx + 1}"  # 分组到不同的模型
             ))
-
         # 绘制未来预测
         if not future_df.empty and 'final_forecast' in future_df.columns:
             fig.add_trace(go.Scatter(
@@ -211,10 +196,8 @@ def update_dashboard(selected_city, selected_variable, selected_models):
                 opacity=0.8,
                 legendgroup=f"Model {idx + 1}"
             ))
-
             # 记录分隔点日期
             test_end_date = hist_df['date'].iloc[-1]
-
         # 显示误差指标
         mae = round(error_metrics.get('MAE', 0), 2) if error_metrics.get('MAE') is not None else "N/A"
         mse = round(error_metrics.get('MSE', 0), 2) if error_metrics.get('MSE') is not None else "N/A"
@@ -225,7 +208,6 @@ def update_dashboard(selected_city, selected_variable, selected_models):
             "MSE": mse,
             "RMSE": rmse
         })
-
     # 添加训练集和测试集之间的分隔线
     if train_end_date and test_start_date:
         fig.add_trace(go.Scatter(
@@ -236,7 +218,6 @@ def update_dashboard(selected_city, selected_variable, selected_models):
             line=dict(color='black', dash='dash', width=3),  # 更宽、更深的颜色
             showlegend=False
         ))
-
     # 添加测试集和未来预测之间的分隔线
     if test_end_date:
         fig.add_trace(go.Scatter(
@@ -247,7 +228,6 @@ def update_dashboard(selected_city, selected_variable, selected_models):
             line=dict(color='black', dash='dash', width=3),  # 更宽、更深的颜色
             showlegend=False
         ))
-
     title_text = f"{selected_city} - {selected_variable} Forecast (Model Comparison)"
     fig.update_layout(
         title=title_text,
@@ -291,8 +271,8 @@ def update_dashboard(selected_city, selected_variable, selected_models):
             )
         ]
     )
-
     return fig, table_data
 
+# 启动应用（仅在本地运行时使用）
 if __name__ == '__main__':
     app.run(debug=True, port=8050)
